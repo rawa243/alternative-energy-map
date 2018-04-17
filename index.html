@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset=utf-8 />
+  <title>Lab 08 Starter</title>
+  <meta name='viewport' content='initial-scale=1,maximum-scale=1,user-scalable=no' />
+
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.3.1/dist/leaflet.css" />
+  <link href='http://fonts.googleapis.com/css?family=Lato' rel='stylesheet' type='text/css'>
+
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background: whitesmoke;
+      font-family: Lato, sans-serif;
+      color: #0D0000;
+    }
+
+    header {
+      padding: 6px 10%;
+    }
+
+    h1 {
+      display: inline-block;
+      margin-right: 20px;
+      color: #2679b2;
+    }
+
+    h2 {
+      padding: 6px 10%;
+      display: inline-block;
+      color: #2679b2;
+    }
+
+    #map {
+      width: 80%;
+      height: 540px;
+      margin: 10px auto;
+    }
+
+    footer {
+      left: 0;
+      bottom: 0;
+      width: 100%;
+      background-color: #262626;
+      color: #abc5d9;
+    }
+
+    body {
+      color: #001323;
+    }
+
+    p {
+      font-size: 1em;
+      padding: 0px 10%;
+      display: inline-block;
+    }
+
+    a {
+			color: #2679b2;
+			font-weight: bold;
+			text-decoration: none;
+		}
+
+    a:hover {
+      text-decoration: underline;
+    }
+
+  </style>
+</head>
+
+<body>
+  <header>
+    <h1>Alternative Energy</h1>
+  </header>
+
+  <div id='map'></div>
+
+  <h2>Alternative electric power production across the U.S.</h2>
+
+  <body>
+    <p>Alternative energy production across the United States sized proportionally by MW of energy produced at each facility. Click on a facil to see more information on the types of fuel sources used and their individual capacities.</p>
+  </body>
+
+  <footer>
+    <p>Mapped for Lesson 3: Part III: Proportional symbol maps. Data from: <a href='https://www.eia.gov'> www.eia.gov</a></p>
+    <p>Map authored by Rebekah Watkins</p>
+  </footer>
+  <script src="https://unpkg.com/leaflet@1.3.1/dist/leaflet.js"></script>
+  <script src="data/power-plants.js"></script>
+  <script>
+
+    // set up map
+    var map = L.map('map', {
+      center: [36, -94],
+      zoom: 4,
+    });
+
+    var tiles = L.tileLayer('https://cartodb-basemaps-{s}.global.ssl.fastly.net/rastertiles/dark_all/{z}/{x}/{y}.png', {
+      attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="http://cartodb.com/attributions">CartoDB</a>',
+      subdomains: 'abcd',
+      maxZoom: 19
+    });
+
+    tiles.addTo(map);
+
+    var commonStyles = {
+     weight: 1,
+     stroke: 1,
+     fillOpacity: .8
+    }
+
+    //Create object of different types of alt plants name and color properties
+    var altPlants = [
+      {
+        name: 'Hydro',
+        properties:{
+          featureColor: '#1f78b4'
+        }
+      },
+      {
+        name: 'Wind',
+        properties:{
+          featureColor: '#a6cee3'
+        }
+      },
+      {
+        name: 'Solar',
+        properties:{
+          featureColor: '#fffcc9'
+        }
+      },
+      {
+        name: 'Geothermal',
+        properties:{
+          featureColor: '#98ff98'
+        }
+      },
+      {
+        name: 'Biomass',
+        properties:{
+          featureColor: '#ff9898'
+        }
+      }
+    ];
+
+    //Create layers using for loop for simplification
+    for(i = 0; i < altPlants.length; i++) {
+      var obj = altPlants[i]
+      //create layer
+      var Layer = L.geoJson(plants, {
+        pointToLayer: function(feature,latlng) {
+          return L.circleMarker(latlng, commonStyles);
+        },
+        //filter by type of plant
+        filter: function(feature) {
+          if(feature.properties.fuel_source[obj.name]) {
+            return feature;
+          }
+        },
+        //for styling use object to gather information for each layer type
+        style: function(feature) {
+          return {
+            color: obj.properties.featureColor,
+            fillColor: obj.properties.featureColor,
+            radius: getRadius(feature.properties.fuel_source[obj.name])
+          }
+        },
+        onEachFeature: function(feature, layer) {
+          //Create popup
+          var popup = "<b>" + layer.feature.properties.plant_name + "</b>" + "<br>"+
+                      "<p>" + layer.feature.properties.capacity_mw + " MV" + "</p>" + "<br>";
+          var type = layer.feature.properties.fuel_source;
+          //Add multiple sources in popup
+          for (var key in type) {
+            popup += "<b>" + key + ": " + "</b>";
+            popup += layer.feature.properties.fuel_source[key] + "<br>";
+          }
+          layer.on('mouseover', function() {
+            // send concat popup string to tool tip
+            layer.bindTooltip(popup);
+            //red when mouse is on features
+            layer.setStyle({
+              fillColor: 'red'
+            });
+          });
+
+          layer.on('mouseout', function(e) {
+            //fix for bad js pattern -> for refining original feature color
+            var fuel_source = Object.keys(e.target.feature.properties.fuel_source)[0]
+            var myObj = altPlants.find(function(candidate) {
+              return candidate.name === fuel_source
+            });
+            //reset color when mouse is off features
+            layer.setStyle({
+              fillColor: myObj.properties.featureColor
+            });
+          });
+        },
+      }).addTo(map);
+    }
+
+    // Create function for radius
+    function getRadius(area) {
+      var radius = Math.sqrt(area/Math.PI); // (pie * r)squared
+      return radius * .6;
+    }
+
+  </script>
+
+</body>
+
+</html>
